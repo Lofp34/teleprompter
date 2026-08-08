@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <title>Prompteur vidéo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="screen">
+    <video id="cam" autoplay playsinline muted></video>
+    <div id="textLayer">
+      <div id="textInner"></div>
+    </div>
+    <div id="topbar">
+      <span id="elapsed">00:00</span>
+      <div style="display:flex;gap:8px">
+        <button id="btnToggleControls" type="button" title="Masquer / afficher les contrôles">👁</button>
+        <button id="btnFullscreen" type="button" title="Plein écran">⛶</button>
+      </div>
+    </div>
+    <div id="controls">
+      <div class="transport">
+        <button id="btnReset" type="button" title="Revenir au début">⏮</button>
+        <button id="btnPlay" type="button" title="Lecture / pause (espace)">▶</button>
+        <button id="btnEditText" type="button" title="Modifier le texte">✎</button>
+      </div>
+      <div class="row">
+        <label for="speedSlider">Vitesse</label>
+        <input id="speedSlider" type="range" min="20" max="400" step="10" value="120">
+        <output id="speedValue">120 px/s</output>
+      </div>
+      <div class="row">
+        <label for="fontSlider">Police</label>
+        <input id="fontSlider" type="range" min="20" max="96" step="2" value="48">
+        <output id="fontValue">48 px</output>
+      </div>
+      <div class="row">
+        <label for="opacitySlider">Opacité</label>
+        <input id="opacitySlider" type="range" min="0.1" max="1" step="0.05" value="0.85">
+        <output id="opacityValue">0.85</output>
+      </div>
+      <div class="row">
+        <label class="switch">
+          <input id="mirrorToggle" type="checkbox" checked>
+          Miroir
+        </label>
+      </div>
+    </div>
+    <div id="overlay"></div>
+    <div id="camError"></div>
+  </div>
+
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <h2 id="modalTitle">Texte du prompteur</h2>
+      <textarea id="textInput" spellcheck="true" placeholder="Exemple : collez ici le texte de votre script…"></textarea>
+      <p id="textStats"></p>
+      <div class="modal-actions">
+        <button id="btnCancelText" type="button">Annuler</button>
+        <button id="btnSaveText" type="button">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="prompter-core.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

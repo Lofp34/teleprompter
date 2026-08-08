@@ -1,0 +1,287 @@
+/* styles.css — prompteur vidéo mobile, thème sombre */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#screen {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+#cam {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+}
+
+#cam.active {
+  opacity: 1;
+}
+
+#screen.mirror #cam {
+  transform: scaleX(-1);
+}
+
+#textLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 4vh 4vw;
+  pointer-events: none;
+}
+
+#textInner {
+  max-width: 92%;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
+  will-change: transform;
+  transform: translateY(0);
+}
+
+#textInner p {
+  margin-bottom: 1em;
+}
+
+#topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
+}
+
+#elapsed {
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+#controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#screen.controls-hidden #controls,
+#screen.controls-hidden #topbar {
+  display: none;
+}
+
+.transport {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+button {
+  min-height: 48px;
+  min-width: 48px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  font-size: 20px;
+  font-weight: 700;
+  padding: 10px 18px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+#btnPlay {
+  font-size: 30px;
+  min-width: 72px;
+  border-radius: 999px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.row label {
+  flex: 0 0 auto;
+  font-size: 14px;
+  color: #ddd;
+  min-width: 52px;
+}
+
+.row output {
+  flex: 0 0 auto;
+  min-width: 64px;
+  text-align: right;
+  font-size: 13px;
+  color: #bbb;
+}
+
+input[type='range'] {
+  flex: 1;
+  min-height: 32px;
+  accent-color: #4cc9f0;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #ddd;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 120px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+#overlay.visible {
+  display: flex;
+}
+
+#camError {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  font-size: 18px;
+  line-height: 1.5;
+  color: #ffd166;
+  background: #111;
+}
+
+#camError.visible {
+  display: flex;
+}
+
+#modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 16px;
+}
+
+#modal.visible {
+  display: flex;
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 720px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #1c1c1e;
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.modal-box h2 {
+  font-size: 20px;
+}
+
+#textInput {
+  flex: 1;
+  min-height: 40vh;
+  resize: none;
+  border: 1px solid #444;
+  border-radius: 12px;
+  background: #121214;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 12px;
+}
+
+#textStats {
+  font-size: 13px;
+  color: #aaa;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+@media (min-width: 768px) {
+  #textInner {
+    max-width: 70%;
+  }
+
+  #controls {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 640px;
+    border-radius: 18px 18px 0 0;
+  }
+}
