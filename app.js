@@ -1,7 +1,8 @@
 /*
- * app.js — prompteur vidéo mobile.
- * Caméra (getUserMedia) + texte défilant. Aucun envoi réseau,
- * aucune dépendance externe. Le texte reste sur l'appareil (localStorage).
+ * app.js — cœur du prompteur vidéo mobile.
+ * Caméra (getUserMedia), texte défilant et navigation tactile.
+ * Aucun envoi réseau, aucune dépendance externe. Le texte et les réglages
+ * restent sur l'appareil (localStorage).
  */
 (function () {
   'use strict';
@@ -13,12 +14,17 @@
 
   var STORAGE_TEXT_KEY = 'teleprompter.text.v1';
   var STORAGE_SETTINGS_KEY = 'teleprompter.settings.v1';
+  var DRAG_THRESHOLD_PX = 7;
+  var DRAG_MULTIPLIER = 1.25;
 
   var state = {
     running: false,
+    countingDown: false,
     hasStarted: false,
     startedAt: 0,
     accumulatedMs: 0,
+    lastFrameAt: 0,
+    scrollPosition: 0,
     rafId: null,
     countdownTimer: null,
     countdownValue: 3,
@@ -28,7 +34,14 @@
     fontSize: core.DEFAULT_FONT,
     opacity: core.DEFAULT_OPACITY,
     mirror: true,
-    camStream: null
+    camStream: null,
+    cameraPromise: null,
+    gesturePointerId: null,
+    gestureStartY: 0,
+    gestureStartPosition: 0,
+    gestureMoved: false,
+    gestureResumeAfter: false,
+    suppressSurfaceClickUntil: 0
   };
 
   var els = {
@@ -36,18 +49,20 @@
     video: document.getElementById('cam'),
     textLayer: document.getElementById('textLayer'),
     textInner: document.getElementById('textInner'),
-    topbar: document.getElementById('topbar'),
+    gestureSurface: document.getElementById('gestureSurface'),
     elapsed: document.getElementById('elapsed'),
     btnFullscreen: document.getElementById('btnFullscreen'),
     btnToggleControls: document.getElementById('btnToggleControls'),
-    controls: document.getElementById('controls'),
     btnPlay: document.getElementById('btnPlay'),
     btnReset: document.getElementById('btnReset'),
     speedSlider: document.getElementById('speedSlider'),
     speedValue: document.getElementById('speedValue'),
+    quickSpeedSlider: document.getElementById('quickSpeedSlider'),
+    quickSpeedValue: document.getElementById('quickSpeedValue'),
     fontSlider: document.getElementById('fontSlider'),
     fontValue: document.getElementById('fontValue'),
     opacitySlider: document.getElementById('opacitySlider'),
+    opacityValue: document.getElementById('opacityValue'),
     mirrorToggle: document.getElementById('mirrorToggle'),
     btnEditText: document.getElementById('btnEditText'),
     overlay: document.getElementById('overlay'),
@@ -65,13 +80,13 @@
       if (!raw) {
         return;
       }
-      var s = JSON.parse(raw);
-      state.speed = core.clampSpeed(s.speed);
-      state.fontSize = core.clampFontSize(s.fontSize);
-      state.opacity = core.clampOpacity(s.opacity);
-      state.mirror = s.mirror !== false;
+      var saved = JSON.parse(raw);
+      state.speed = core.clampSpeed(saved.speed);
+      state.fontSize = core.clampFontSize(saved.fontSize);
+      state.opacity = core.clampOpacity(saved.opacity);
+      state.mirror = saved.mirror !== false;
     } catch (e) {
-      // stockage indisponible : valeurs par défaut conservées
+      // Stockage indisponible : valeurs par défaut conservées.
     }
   }
 
@@ -84,7 +99,7 @@
         mirror: state.mirror
       }));
     } catch (e) {
-      // stockage indisponible : rien à faire
+      // Stockage indisponible : rien à faire.
     }
   }
 
@@ -95,7 +110,7 @@
         return saved;
       }
     } catch (e) {
-      // stockage indisponible
+      // Stockage indisponible.
     }
     return 'Exemple — remplacez ce texte par votre script.\n\n' +
       'Bonjour et bienvenue. Ceci est un texte d\'exemple synthétique ' +
@@ -106,8 +121,12 @@
     try {
       localStorage.setItem(STORAGE_TEXT_KEY, text);
     } catch (e) {
-      // stockage indisponible : texte conservé en mémoire uniquement
+      // Stockage indisponible : texte conservé en mémoire uniquement.
     }
+  }
+
+  function formatOpacity(value) {
+    return String(value.toFixed(2)).replace(/0+$/, '').replace(/\.$/, '');
   }
 
   function applySettings() {
@@ -115,38 +134,64 @@
     els.textInner.style.opacity = String(state.opacity);
     els.speedSlider.value = String(state.speed);
     els.speedValue.textContent = state.speed + ' px/s';
+    els.quickSpeedSlider.value = String(state.speed);
+    els.quickSpeedValue.textContent = String(state.speed);
     els.fontSlider.value = String(state.fontSize);
     els.fontValue.textContent = state.fontSize + ' px';
     els.opacitySlider.value = String(state.opacity);
+    els.opacityValue.textContent = formatOpacity(state.opacity);
     els.mirrorToggle.checked = state.mirror;
     els.screen.classList.toggle('mirror', state.mirror);
     saveSettings();
   }
 
+  function setSpeed(value) {
+    state.speed = core.clampSpeed(Number(value));
+    els.speedSlider.value = String(state.speed);
+    els.speedValue.textContent = state.speed + ' px/s';
+    els.quickSpeedSlider.value = String(state.speed);
+    els.quickSpeedValue.textContent = String(state.speed);
+    saveSettings();
+  }
+
   function renderText() {
-    var container = els.textInner;
-    container.textContent = '';
-    state.paragraphs.forEach(function (p) {
+    els.textInner.textContent = '';
+    state.paragraphs.forEach(function (paragraph) {
       var node = document.createElement('p');
-      node.textContent = p;
-      container.appendChild(node);
+      node.textContent = paragraph;
+      els.textInner.appendChild(node);
     });
-    measureScroll();
+    measureScroll(false);
     resetScroll();
   }
 
-  function measureScroll() {
-    state.maxScroll = Math.max(0, els.textInner.scrollHeight - els.textLayer.clientHeight);
+  function clampScrollPosition(value) {
+    var numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      numeric = 0;
+    }
+    return Math.min(state.maxScroll, Math.max(0, numeric));
   }
 
-  function resetScroll() {
-    state.running = false;
-    state.hasStarted = false;
-    state.accumulatedMs = 0;
-    cancelRaf();
-    els.textInner.style.transform = 'translateY(0px)';
-    els.elapsed.textContent = '00:00';
-    updatePlayButton();
+  function renderScrollPosition() {
+    els.textInner.style.transform = 'translateY(-' + state.scrollPosition.toFixed(2) + 'px)';
+  }
+
+  function setScrollPosition(value) {
+    state.scrollPosition = clampScrollPosition(value);
+    renderScrollPosition();
+  }
+
+  function measureScroll(preserveProgress) {
+    var oldMax = state.maxScroll;
+    var oldProgress = oldMax > 0 ? state.scrollPosition / oldMax : 0;
+    state.maxScroll = Math.max(0, els.textInner.scrollHeight - els.textLayer.clientHeight);
+
+    if (preserveProgress && oldMax > 0) {
+      state.scrollPosition = oldProgress * state.maxScroll;
+    }
+    state.scrollPosition = clampScrollPosition(state.scrollPosition);
+    renderScrollPosition();
   }
 
   function cancelRaf() {
@@ -156,36 +201,93 @@
     }
   }
 
-  function updatePlayButton() {
-    els.btnPlay.textContent = state.running ? '⏸' : '▶';
+  function cancelCountdown() {
+    if (state.countdownTimer !== null) {
+      clearInterval(state.countdownTimer);
+      state.countdownTimer = null;
+    }
+    state.countingDown = false;
   }
 
-  function startScroll() {
-    state.startedAt = performance.now();
-    state.running = true;
+  function resetScroll() {
+    cancelCountdown();
+    state.running = false;
+    state.hasStarted = false;
+    state.accumulatedMs = 0;
+    state.scrollPosition = 0;
+    cancelRaf();
+    renderScrollPosition();
+    els.elapsed.textContent = '00:00';
     updatePlayButton();
-    tick();
   }
 
-  function pauseScroll() {
+  function updatePlayButton() {
+    if (state.countingDown) {
+      els.btnPlay.textContent = '✕';
+      els.btnPlay.setAttribute('aria-label', 'Annuler le compte à rebours');
+      return;
+    }
+    els.btnPlay.textContent = state.running ? '⏸' : '▶';
+    els.btnPlay.setAttribute('aria-label', state.running ? 'Mettre le défilement en pause' : 'Lancer le défilement');
+  }
+
+  function advanceScrollTo(now) {
     if (!state.running) {
       return;
     }
-    state.accumulatedMs += performance.now() - state.startedAt;
+    var deltaMs = Math.max(0, now - state.lastFrameAt);
+    state.lastFrameAt = now;
+    setScrollPosition(state.scrollPosition + (deltaMs / 1000) * state.speed);
+  }
+
+  function startScroll(silentUi) {
+    if (state.maxScroll <= 0) {
+      showOverlay('Le texte tient déjà à l’écran', 1600);
+      state.running = false;
+      if (!silentUi) {
+        updatePlayButton();
+      }
+      return;
+    }
+
+    var now = performance.now();
+    state.startedAt = now;
+    state.lastFrameAt = now;
+    state.running = true;
+    if (!silentUi) {
+      updatePlayButton();
+    }
+    cancelRaf();
+    state.rafId = requestAnimationFrame(tick);
+  }
+
+  function pauseScroll(silentUi) {
+    if (!state.running) {
+      return;
+    }
+    var now = performance.now();
+    advanceScrollTo(now);
+    state.accumulatedMs += Math.max(0, now - state.startedAt);
     state.running = false;
     cancelRaf();
-    updatePlayButton();
+    els.elapsed.textContent = core.formatElapsed(state.accumulatedMs);
+    if (!silentUi) {
+      updatePlayButton();
+    }
   }
 
-  function tick() {
+  function tick(now) {
+    state.rafId = null;
     if (!state.running) {
       return;
     }
-    var elapsedMs = state.accumulatedMs + (performance.now() - state.startedAt);
-    var pos = core.scrollPositionAt(elapsedMs, state.speed, state.maxScroll);
-    els.textInner.style.transform = 'translateY(-' + pos + 'px)';
+
+    advanceScrollTo(now);
+    var elapsedMs = state.accumulatedMs + Math.max(0, now - state.startedAt);
     els.elapsed.textContent = core.formatElapsed(elapsedMs);
-    if (core.isAtEnd(pos, state.maxScroll)) {
+
+    if (core.isAtEnd(state.scrollPosition, state.maxScroll)) {
+      state.accumulatedMs = elapsedMs;
       state.running = false;
       updatePlayButton();
       showOverlay('Fin du texte', 1800);
@@ -196,18 +298,26 @@
 
   function beginCountdown() {
     var remaining = state.countdownValue;
+    state.countingDown = true;
+    updatePlayButton();
+
     if (remaining <= 0) {
-      startScroll();
+      state.countingDown = false;
+      updatePlayButton();
+      startScroll(false);
       return;
     }
+
     showOverlay(String(remaining), 900);
     state.countdownTimer = setInterval(function () {
       remaining -= 1;
       if (remaining <= 0) {
         clearInterval(state.countdownTimer);
         state.countdownTimer = null;
+        state.countingDown = false;
         hideOverlay();
-        startScroll();
+        updatePlayButton();
+        startScroll(false);
       } else {
         showOverlay(String(remaining), 900);
       }
@@ -215,72 +325,102 @@
   }
 
   function togglePlay() {
-    if (state.running) {
-      pauseScroll();
+    if (state.countingDown) {
+      cancelCountdown();
+      state.hasStarted = false;
+      hideOverlay();
+      updatePlayButton();
       return;
     }
-    if (core.isAtEnd(core.scrollPositionAt(state.accumulatedMs, state.speed, state.maxScroll), state.maxScroll)) {
+    if (state.running) {
+      pauseScroll(false);
+      return;
+    }
+    if (core.isAtEnd(state.scrollPosition, state.maxScroll)) {
+      setScrollPosition(0);
       state.accumulatedMs = 0;
+      els.elapsed.textContent = '00:00';
     }
     if (!state.hasStarted) {
       state.hasStarted = true;
       beginCountdown();
     } else {
-      startScroll();
+      startScroll(false);
     }
   }
 
   function showOverlay(text, durationMs) {
     els.overlay.textContent = text;
+    els.overlay.classList.toggle('compact', String(text).length > 4);
     els.overlay.classList.add('visible');
-    clearTimeout(showOverlay._t);
+    clearTimeout(showOverlay._timer);
     if (durationMs) {
-      showOverlay._t = setTimeout(hideOverlay, durationMs);
+      showOverlay._timer = setTimeout(hideOverlay, durationMs);
     }
   }
 
   function hideOverlay() {
     els.overlay.classList.remove('visible');
+    els.overlay.classList.remove('compact');
   }
 
   function startCamera() {
-    if (state.camStream) {
-      return;
+    if (state.camStream && state.camStream.active) {
+      return Promise.resolve(state.camStream);
+    }
+    if (state.cameraPromise) {
+      return state.cameraPromise;
     }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      var unsupportedError = new Error('getUserMedia non supporté');
       showCameraError('Caméra non supportée par ce navigateur. Utilisez Safari ou Chrome récent.');
-      return;
+      return Promise.reject(unsupportedError);
     }
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+
+    state.cameraPromise = navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
       audio: false
     }).then(function (stream) {
       state.camStream = stream;
+      state.cameraPromise = null;
       els.video.srcObject = stream;
       els.video.classList.add('active');
-      els.video.play().catch(function () { /* lecture différée */ });
+      els.video.play().catch(function () { /* Lecture différée par le navigateur. */ });
       hideCameraError();
+
+      stream.getVideoTracks().forEach(function (track) {
+        track.addEventListener('ended', function () {
+          if (state.camStream === stream) {
+            showCameraError('La caméra a été interrompue. Rechargez la page pour la réactiver.');
+          }
+        });
+      });
+      return stream;
     }).catch(function (err) {
-      var message = 'Impossible de démarrer la caméra.';
-      if (err && err.name === 'NotAllowedError') {
-        message = 'Caméra refusée. Autorisez la caméra dans les réglages du navigateur.';
-      } else if (err && err.name === 'NotFoundError') {
-        message = 'Aucune caméra détectée sur cet appareil.';
-      } else if (err && err.name === 'NotReadableError') {
-        message = 'Caméra déjà utilisée par une autre application.';
-      } else if (err && err.name === 'SecurityError') {
-        message = 'La caméra exige une connexion sécurisée (HTTPS). GitHub Pages la fournit.';
-      }
-      showCameraError(message);
+      state.cameraPromise = null;
+      showCameraError(cameraErrorMessage(err));
+      throw err;
     });
+
+    return state.cameraPromise;
   }
 
-  function stopCamera() {
-    if (state.camStream) {
-      state.camStream.getTracks().forEach(function (t) { t.stop(); });
-      state.camStream = null;
+  function cameraErrorMessage(err) {
+    var message = 'Impossible de démarrer la caméra.';
+    if (err && err.name === 'NotAllowedError') {
+      message = 'Caméra refusée. Autorisez la caméra dans les réglages du navigateur.';
+    } else if (err && err.name === 'NotFoundError') {
+      message = 'Aucune caméra détectée sur cet appareil.';
+    } else if (err && err.name === 'NotReadableError') {
+      message = 'Caméra déjà utilisée par une autre application.';
+    } else if (err && err.name === 'SecurityError') {
+      message = 'La caméra exige une connexion sécurisée (HTTPS). GitHub Pages la fournit.';
     }
-    els.video.classList.remove('active');
+    return message;
   }
 
   function showCameraError(message) {
@@ -292,11 +432,29 @@
     els.camError.classList.remove('visible');
   }
 
+  function getFullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
   function toggleFullscreen() {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(function () {});
+    var result;
+    if (getFullscreenElement()) {
+      var exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exitFullscreen) {
+        result = exitFullscreen.call(document);
+      }
     } else {
-      document.documentElement.requestFullscreen().catch(function () {});
+      var requestFullscreen = els.screen.requestFullscreen || els.screen.webkitRequestFullscreen;
+      if (requestFullscreen) {
+        result = requestFullscreen.call(els.screen);
+      } else {
+        showOverlay('Plein écran non disponible dans ce navigateur', 1800);
+      }
+    }
+    if (result && typeof result.catch === 'function') {
+      result.catch(function () {
+        showOverlay('Plein écran non disponible', 1600);
+      });
     }
   }
 
@@ -328,6 +486,74 @@
       core.countWords(paragraphs) + ' mot(s). Le texte reste sur cet appareil.';
   }
 
+  function beginGesture(ev) {
+    if (typeof ev.button === 'number' && ev.button !== 0) {
+      return;
+    }
+    state.gesturePointerId = ev.pointerId;
+    state.gestureStartY = ev.clientY;
+    state.gestureStartPosition = state.scrollPosition;
+    state.gestureMoved = false;
+    state.gestureResumeAfter = false;
+    if (els.gestureSurface.setPointerCapture) {
+      try {
+        els.gestureSurface.setPointerCapture(ev.pointerId);
+      } catch (e) {
+        // Capture facultative.
+      }
+    }
+  }
+
+  function moveGesture(ev) {
+    if (state.gesturePointerId === null || ev.pointerId !== state.gesturePointerId) {
+      return;
+    }
+    var deltaY = ev.clientY - state.gestureStartY;
+
+    if (!state.gestureMoved) {
+      if (Math.abs(deltaY) < DRAG_THRESHOLD_PX) {
+        return;
+      }
+      state.gestureMoved = true;
+      state.gestureResumeAfter = state.running;
+      if (state.running) {
+        pauseScroll(true);
+      }
+      state.gestureStartPosition = state.scrollPosition;
+      els.screen.classList.add('is-scrubbing');
+    }
+
+    ev.preventDefault();
+    setScrollPosition(state.gestureStartPosition - deltaY * DRAG_MULTIPLIER);
+  }
+
+  function endGesture(ev) {
+    if (state.gesturePointerId === null || ev.pointerId !== state.gesturePointerId) {
+      return;
+    }
+
+    if (state.gestureMoved) {
+      state.suppressSurfaceClickUntil = Date.now() + 400;
+      els.screen.classList.remove('is-scrubbing');
+      if (state.gestureResumeAfter && !core.isAtEnd(state.scrollPosition, state.maxScroll)) {
+        startScroll(true);
+      } else {
+        updatePlayButton();
+      }
+    }
+
+    if (els.gestureSurface.releasePointerCapture) {
+      try {
+        els.gestureSurface.releasePointerCapture(ev.pointerId);
+      } catch (e) {
+        // Capture déjà relâchée.
+      }
+    }
+    state.gesturePointerId = null;
+    state.gestureMoved = false;
+    state.gestureResumeAfter = false;
+  }
+
   function bindEvents() {
     els.btnPlay.addEventListener('click', togglePlay);
     els.btnReset.addEventListener('click', function () {
@@ -335,19 +561,21 @@
       hideOverlay();
     });
     els.speedSlider.addEventListener('input', function () {
-      state.speed = core.clampSpeed(Number(els.speedSlider.value));
-      els.speedValue.textContent = state.speed + ' px/s';
-      saveSettings();
+      setSpeed(els.speedSlider.value);
+    });
+    els.quickSpeedSlider.addEventListener('input', function () {
+      setSpeed(els.quickSpeedSlider.value);
     });
     els.fontSlider.addEventListener('input', function () {
       state.fontSize = core.clampFontSize(Number(els.fontSlider.value));
       els.fontValue.textContent = state.fontSize + ' px';
       els.textInner.style.fontSize = state.fontSize + 'px';
       saveSettings();
-      measureScroll();
+      measureScroll(true);
     });
     els.opacitySlider.addEventListener('input', function () {
       state.opacity = core.clampOpacity(Number(els.opacitySlider.value));
+      els.opacityValue.textContent = formatOpacity(state.opacity);
       els.textInner.style.opacity = String(state.opacity);
       saveSettings();
     });
@@ -362,12 +590,19 @@
     els.textInput.addEventListener('input', updateTextStats);
     els.btnFullscreen.addEventListener('click', toggleFullscreen);
     els.btnToggleControls.addEventListener('click', toggleControlsVisibility);
-    els.screen.addEventListener('click', function (ev) {
-      if (els.controls.contains(ev.target) || els.topbar.contains(ev.target)) {
+
+    els.gestureSurface.addEventListener('pointerdown', beginGesture);
+    els.gestureSurface.addEventListener('pointermove', moveGesture);
+    els.gestureSurface.addEventListener('pointerup', endGesture);
+    els.gestureSurface.addEventListener('pointercancel', endGesture);
+    els.gestureSurface.addEventListener('click', function (ev) {
+      if (Date.now() < state.suppressSurfaceClickUntil) {
+        ev.preventDefault();
         return;
       }
       toggleControlsVisibility();
     });
+
     document.addEventListener('keydown', function (ev) {
       if (els.modal.classList.contains('visible')) {
         if (ev.key === 'Escape') {
@@ -379,17 +614,41 @@
         ev.preventDefault();
         togglePlay();
       } else if (ev.key === 'ArrowRight') {
-        state.speed = Math.min(core.MAX_SPEED, state.speed + 10);
-        applySettings();
+        setSpeed(state.speed + 10);
       } else if (ev.key === 'ArrowLeft') {
-        state.speed = Math.max(core.MIN_SPEED, state.speed - 10);
-        applySettings();
+        setSpeed(state.speed - 10);
+      } else if (ev.key === 'ArrowUp') {
+        setScrollPosition(state.scrollPosition + 80);
+      } else if (ev.key === 'ArrowDown') {
+        setScrollPosition(state.scrollPosition - 80);
       } else if (ev.key.toLowerCase() === 'f') {
         toggleFullscreen();
       }
     });
-    window.addEventListener('resize', measureScroll);
+
+    window.addEventListener('resize', function () {
+      measureScroll(true);
+    });
+    window.addEventListener('orientationchange', function () {
+      setTimeout(function () { measureScroll(true); }, 250);
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && state.running) {
+        pauseScroll(false);
+      }
+    });
   }
+
+  window.TeleprompterApp = {
+    ensureCamera: startCamera,
+    pauseScroll: function () {
+      if (state.running) {
+        pauseScroll(false);
+      }
+    },
+    showOverlay: showOverlay,
+    hideOverlay: hideOverlay
+  };
 
   function init() {
     loadSettings();
@@ -397,7 +656,9 @@
     applySettings();
     renderText();
     bindEvents();
-    startCamera();
+    startCamera().catch(function () {
+      // Le message d'erreur détaillé est déjà affiché dans l'interface.
+    });
   }
 
   init();
