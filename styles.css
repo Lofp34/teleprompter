@@ -20,19 +20,19 @@ body {
 #screen {
   position: fixed;
   inset: 0;
-  background: #000;
   overflow: hidden;
+  background: #000;
 }
 
 #cam {
   position: absolute;
   inset: 0;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
   opacity: 0;
   transition: opacity 0.4s ease;
-  z-index: 1;
 }
 
 #cam.active {
@@ -47,67 +47,84 @@ body {
   position: absolute;
   inset: 0;
   z-index: 2;
-  overflow: hidden;
   display: flex;
-  justify-content: center;
   align-items: flex-start;
-  padding: 4vh 4vw;
+  justify-content: center;
+  overflow: hidden;
+  padding: 4vh 4vw 86px;
   pointer-events: none;
 }
 
 #textInner {
   max-width: 92%;
+  color: #fff;
   font-size: 48px;
   font-weight: 600;
   line-height: 1.5;
   text-align: center;
-  color: #fff;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.8);
-  will-change: transform;
   transform: translateY(0);
+  will-change: transform;
 }
 
 #textInner p {
   margin-bottom: 1em;
 }
 
+#gestureSurface {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  cursor: grab;
+  touch-action: none;
+}
+
+#screen.is-scrubbing #gestureSurface {
+  cursor: grabbing;
+}
+
 #topbar {
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
-  z-index: 4;
+  left: 0;
+  z-index: 6;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
-  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0));
+  padding: calc(8px + env(safe-area-inset-top)) 10px 10px;
+  background: linear-gradient(rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
 }
 
 #elapsed {
-  font-variant-numeric: tabular-nums;
-  font-size: 18px;
-  font-weight: 600;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 16px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 #controls {
   position: absolute;
-  left: 0;
   right: 0;
   bottom: 0;
-  z-index: 3;
-  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  left: 0;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 14px 14px calc(72px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 #screen.controls-hidden #controls,
@@ -117,33 +134,47 @@ body {
 
 .transport {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   gap: 16px;
 }
 
-button {
-  min-height: 48px;
+button,
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 48px;
-  border: none;
+  min-height: 48px;
+  padding: 10px 18px;
+  border: 0;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.92);
   color: #111;
-  font-size: 20px;
-  font-weight: 700;
-  padding: 10px 18px;
   cursor: pointer;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
   touch-action: manipulation;
 }
 
-button:active {
+button:active,
+.button-link:active {
   transform: scale(0.96);
 }
 
+button:disabled {
+  opacity: 0.34;
+  cursor: default;
+  transform: none;
+}
+
 #btnPlay {
-  font-size: 30px;
   min-width: 72px;
   border-radius: 999px;
+  font-size: 30px;
 }
 
 .row {
@@ -154,17 +185,17 @@ button:active {
 
 .row label {
   flex: 0 0 auto;
-  font-size: 14px;
-  color: #ddd;
   min-width: 52px;
+  color: #ddd;
+  font-size: 14px;
 }
 
 .row output {
   flex: 0 0 auto;
   min-width: 64px;
-  text-align: right;
-  font-size: 13px;
   color: #bbb;
+  font-size: 13px;
+  text-align: right;
 }
 
 input[type='range'] {
@@ -177,20 +208,158 @@ input[type='range'] {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
   color: #ddd;
+  font-size: 14px;
+}
+
+/* Commandes d’enregistrement persistantes, même lorsque les autres contrôles sont masqués. */
+#recordDock {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.46);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.24);
+  opacity: 0.8;
+  transform: translateX(-50%);
+  transition: opacity 0.2s ease, background 0.2s ease, top 0.2s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#recordDock:hover,
+#recordDock:focus-within,
+#recordDock.is-recording,
+#recordDock.is-paused,
+#recordDock.is-preparing,
+#recordDock.is-stopping {
+  opacity: 1;
+}
+
+#recordIndicator {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+#recordDock.is-recording #recordIndicator {
+  background: #ff453a;
+  animation: recordPulse 1.3s ease-in-out infinite;
+}
+
+#recordDock.is-paused #recordIndicator {
+  background: #ffd60a;
+}
+
+#recordDock.is-preparing #recordIndicator,
+#recordDock.is-stopping #recordIndicator {
+  background: #64d2ff;
+}
+
+#recordTime {
+  min-width: 42px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.hud-button {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 16px;
+}
+
+#btnRecordStart {
+  color: #ff453a;
+  font-size: 21px;
+}
+
+#btnRecordStop {
+  font-size: 14px;
+}
+
+@keyframes recordPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.38; }
+}
+
+/* Réglage de vitesse toujours accessible au bas de l’écran. */
+#quickSpeedControl {
+  position: absolute;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(92vw, 560px);
+  min-height: 44px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.44);
+  opacity: 0.76;
+  transform: translateX(-50%);
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#quickSpeedControl:hover,
+#quickSpeedControl:focus-within,
+#screen.is-scrubbing #quickSpeedControl {
+  opacity: 1;
+}
+
+#quickSpeedControl label {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+#quickSpeedControl input[type='range'] {
+  min-width: 0;
+  min-height: 30px;
+}
+
+#quickSpeedControl output {
+  min-width: 30px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 #overlay {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 7;
   display: none;
   align-items: center;
   justify-content: center;
+  padding: 24px;
   background: rgba(0, 0, 0, 0.35);
-  font-size: 120px;
+  font-size: clamp(48px, 18vw, 120px);
   font-weight: 800;
+  text-align: center;
   pointer-events: none;
 }
 
@@ -198,50 +367,58 @@ input[type='range'] {
   display: flex;
 }
 
+#overlay.compact {
+  font-size: clamp(22px, 6vw, 42px);
+  line-height: 1.2;
+}
+
 #camError {
   position: absolute;
   inset: 0;
-  z-index: 6;
+  z-index: 9;
   display: none;
   align-items: center;
   justify-content: center;
-  text-align: center;
   padding: 24px;
+  background: #111;
+  color: #ffd166;
   font-size: 18px;
   line-height: 1.5;
-  color: #ffd166;
-  background: #111;
+  text-align: center;
 }
 
 #camError.visible {
   display: flex;
 }
 
-#modal {
+#modal,
+#recordingModal {
   position: fixed;
   inset: 0;
   z-index: 10;
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.75);
   padding: 16px;
+  background: rgba(0, 0, 0, 0.78);
 }
 
-#modal.visible {
+#modal.visible,
+#recordingModal.visible {
   display: flex;
 }
 
 .modal-box {
-  width: 100%;
-  max-width: 720px;
-  max-height: 88vh;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: #1c1c1e;
-  border-radius: 18px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 88vh;
   padding: 18px;
+  overflow: auto;
+  border-radius: 18px;
+  background: #1c1c1e;
 }
 
 .modal-box h2 {
@@ -251,6 +428,7 @@ input[type='range'] {
 #textInput {
   flex: 1;
   min-height: 40vh;
+  padding: 12px;
   resize: none;
   border: 1px solid #444;
   border-radius: 12px;
@@ -258,18 +436,85 @@ input[type='range'] {
   color: #fff;
   font-size: 16px;
   line-height: 1.5;
-  padding: 12px;
 }
 
-#textStats {
-  font-size: 13px;
+#textStats,
+#recordingInfo {
   color: #aaa;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .modal-actions {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 10px;
+}
+
+.recording-modal-box {
+  max-width: 760px;
+}
+
+#recordingPreview {
+  width: 100%;
+  max-height: 58vh;
+  border-radius: 12px;
+  background: #000;
+}
+
+.recording-actions .button-link,
+.recording-actions button {
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+@media (max-width: 390px) {
+  #recordDock {
+    top: calc(52px + env(safe-area-inset-top));
+  }
+
+  #screen.controls-hidden #recordDock {
+    top: calc(8px + env(safe-area-inset-top));
+  }
+
+  #elapsed {
+    padding-inline: 8px;
+    font-size: 14px;
+  }
+
+  #topbar button {
+    min-width: 42px;
+    min-height: 42px;
+    padding: 8px 12px;
+  }
+
+  #quickSpeedControl label {
+    display: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  #textLayer {
+    padding-top: 3vh;
+  }
+
+  #recordDock {
+    top: calc(6px + env(safe-area-inset-top));
+  }
+
+  #controls {
+    gap: 7px;
+    padding-top: 8px;
+  }
+
+  .transport button {
+    min-height: 42px;
+  }
+
+  .row {
+    gap: 7px;
+  }
 }
 
 @media (min-width: 768px) {
@@ -278,10 +523,22 @@ input[type='range'] {
   }
 
   #controls {
-    left: 50%;
     right: auto;
-    transform: translateX(-50%);
+    left: 50%;
     width: 640px;
     border-radius: 18px 18px 0 0;
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #cam,
+  #recordDock,
+  #quickSpeedControl {
+    transition: none;
+  }
+
+  #recordDock.is-recording #recordIndicator {
+    animation: none;
   }
 }

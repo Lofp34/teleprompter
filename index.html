@@ -10,21 +10,34 @@
 <body>
   <div id="screen">
     <video id="cam" autoplay playsinline muted></video>
+
     <div id="textLayer">
       <div id="textInner"></div>
     </div>
+
+    <div id="gestureSurface" aria-label="Zone de défilement tactile"></div>
+
     <div id="topbar">
       <span id="elapsed">00:00</span>
-      <div style="display:flex;gap:8px">
-        <button id="btnToggleControls" type="button" title="Masquer / afficher les contrôles">👁</button>
-        <button id="btnFullscreen" type="button" title="Plein écran">⛶</button>
+      <div class="topbar-actions">
+        <button id="btnToggleControls" type="button" title="Masquer / afficher les contrôles" aria-label="Masquer ou afficher les contrôles">👁</button>
+        <button id="btnFullscreen" type="button" title="Plein écran" aria-label="Activer ou quitter le plein écran">⛶</button>
       </div>
     </div>
+
+    <div id="recordDock" class="is-idle" role="group" aria-label="Commandes d’enregistrement vidéo">
+      <span id="recordIndicator" aria-hidden="true"></span>
+      <span id="recordTime" aria-live="polite">00:00</span>
+      <button id="btnRecordStart" class="hud-button" type="button" title="Démarrer l’enregistrement" aria-label="Démarrer l’enregistrement">●</button>
+      <button id="btnRecordPause" class="hud-button" type="button" title="Mettre l’enregistrement en pause" aria-label="Mettre l’enregistrement en pause" disabled>Ⅱ</button>
+      <button id="btnRecordStop" class="hud-button" type="button" title="Finaliser l’enregistrement" aria-label="Finaliser l’enregistrement" disabled>■</button>
+    </div>
+
     <div id="controls">
       <div class="transport">
-        <button id="btnReset" type="button" title="Revenir au début">⏮</button>
-        <button id="btnPlay" type="button" title="Lecture / pause (espace)">▶</button>
-        <button id="btnEditText" type="button" title="Modifier le texte">✎</button>
+        <button id="btnReset" type="button" title="Revenir au début" aria-label="Revenir au début">⏮</button>
+        <button id="btnPlay" type="button" title="Lecture / pause (espace)" aria-label="Lancer le défilement">▶</button>
+        <button id="btnEditText" type="button" title="Modifier le texte" aria-label="Modifier le texte">✎</button>
       </div>
       <div class="row">
         <label for="speedSlider">Vitesse</label>
@@ -48,6 +61,13 @@
         </label>
       </div>
     </div>
+
+    <div id="quickSpeedControl" role="group" aria-label="Réglage rapide de la vitesse">
+      <label for="quickSpeedSlider">Vitesse</label>
+      <input id="quickSpeedSlider" type="range" min="20" max="400" step="10" value="120">
+      <output id="quickSpeedValue">120</output>
+    </div>
+
     <div id="overlay"></div>
     <div id="camError"></div>
   </div>
@@ -64,7 +84,21 @@
     </div>
   </div>
 
+  <div id="recordingModal" role="dialog" aria-modal="true" aria-labelledby="recordingModalTitle">
+    <div class="modal-box recording-modal-box">
+      <h2 id="recordingModalTitle">Enregistrement terminé</h2>
+      <video id="recordingPreview" controls playsinline></video>
+      <p id="recordingInfo"></p>
+      <div class="modal-actions recording-actions">
+        <button id="btnCloseRecording" type="button">Nouvelle prise</button>
+        <a id="btnDownloadRecording" class="button-link" href="#" download>Enregistrer la vidéo</a>
+        <button id="btnShareRecording" type="button" hidden>Partager / enregistrer</button>
+      </div>
+    </div>
+  </div>
+
   <script src="prompter-core.js"></script>
   <script src="app.js"></script>
+  <script src="recorder.js"></script>
 </body>
 </html>
