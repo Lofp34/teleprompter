@@ -1,0 +1,25 @@
+/*
+ * Correctif de zone utile du prompteur.
+ * Le moteur mesure la hauteur de #textInner : les marges verticales sont
+ * donc portées par le texte afin que les premières et dernières lignes
+ * restent accessibles, y compris derrière le contrôle de vitesse mobile.
+ */
+#textLayer {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+#textInner {
+  padding-top: 4vh;
+  padding-bottom: calc(86px + env(safe-area-inset-bottom));
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  #textLayer {
+    padding-top: 0;
+  }
+
+  #textInner {
+    padding-top: 3vh;
+  }
+}
