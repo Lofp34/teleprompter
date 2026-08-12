@@ -16,7 +16,7 @@
 
   var DEFAULT_SPEED = 120;    // pixels par seconde
   var MIN_SPEED = 20;
-  var MAX_SPEED = 400;
+  var MAX_SPEED = 240;
   var MIN_FONT = 20;
   var MAX_FONT = 96;
   var DEFAULT_FONT = 48;
