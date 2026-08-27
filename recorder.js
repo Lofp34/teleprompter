@@ -464,7 +464,7 @@
   }
 
   function showRecordingResult(durationMs) {
-    var nativeShareAvailable = canShareFile(state.file);
+    var nativeShareAvailable = isIOSLike() && canShareFile(state.file);
     var infoSuffix = '. La vidéo reste sur cet appareil.';
 
     app.pauseScroll();
@@ -487,7 +487,7 @@
       infoSuffix += ' Touchez le bouton puis choisissez « Enregistrer la vidéo » ou « Enregistrer dans Fichiers ».';
     }
     if (state.blob.size >= LARGE_FILE_WARNING_BYTES) {
-      infoSuffix += ' Fichier volumineux : ne fermez pas cette page avant la fin de l’enregistrement.';
+      infoSuffix += ' Fichier volumineux : ne fermez pas cette page avant la fin de l’export.';
     }
 
     els.info.textContent = core.formatElapsed(durationMs) + ' • ' +
@@ -541,7 +541,7 @@
       return;
     }
 
-    if (canShareFile(state.file)) {
+    if (isIOSLike() && canShareFile(state.file)) {
       shareRecording();
       return;
     }
