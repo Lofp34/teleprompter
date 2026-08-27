@@ -12,6 +12,12 @@
     throw new Error('PrompterCore ou TeleprompterApp manquant');
   }
 
+  // Un débit maîtrisé évite les fichiers de plusieurs centaines de Mo sur iPhone.
+  // Pour 8 min 40 s, 2,5 Mbit/s + audio produit environ 170 Mo au lieu de ~600 Mo.
+  var VIDEO_BITS_PER_SECOND = 2500000;
+  var AUDIO_BITS_PER_SECOND = 128000;
+  var LARGE_FILE_WARNING_BYTES = 300 * 1024 * 1024;
+
   var state = {
     mediaRecorder: null,
     recordingStream: null,
@@ -46,6 +52,12 @@
   function isSupported() {
     return typeof window.MediaRecorder === 'function' &&
       typeof window.MediaStream === 'function';
+  }
+
+  function isIOSLike() {
+    var userAgent = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/.test(userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
   function chooseMimeType() {
@@ -166,11 +178,27 @@
   }
 
   function buildRecorder(stream, requestedMimeType) {
+    var options = {};
     if (requestedMimeType) {
-      try {
-        return new window.MediaRecorder(stream, { mimeType: requestedMimeType });
-      } catch (err) {
-        // Certains navigateurs annoncent un format puis refusent les options.
+      options.mimeType = requestedMimeType;
+    }
+    if (stream.getVideoTracks().length) {
+      options.videoBitsPerSecond = VIDEO_BITS_PER_SECOND;
+    }
+    if (stream.getAudioTracks().length) {
+      options.audioBitsPerSecond = AUDIO_BITS_PER_SECOND;
+    }
+
+    try {
+      return new window.MediaRecorder(stream, options);
+    } catch (err) {
+      // Repli pour les navigateurs qui annoncent un format mais refusent le débit.
+      if (requestedMimeType) {
+        try {
+          return new window.MediaRecorder(stream, { mimeType: requestedMimeType });
+        } catch (mimeError) {
+          // Dernier repli ci-dessous.
+        }
       }
     }
     return new window.MediaRecorder(stream);
@@ -378,7 +406,10 @@
     if (!raw) {
       return 'video/webm';
     }
-    return raw;
+
+    // Le partage iOS accepte mieux un type simple (video/mp4) qu'un type
+    // enrichi de paramètres codecs.
+    return String(raw).split(';')[0].trim() || 'video/webm';
   }
 
   function extensionForMimeType(type) {
@@ -419,8 +450,11 @@
   }
 
   function canShareFile(file) {
-    if (!file || typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') {
+    if (!file || typeof navigator.share !== 'function') {
       return false;
+    }
+    if (typeof navigator.canShare !== 'function') {
+      return true;
     }
     try {
       return navigator.canShare({ files: [file] });
@@ -430,16 +464,36 @@
   }
 
   function showRecordingResult(durationMs) {
+    var nativeShareAvailable = isIOSLike() && canShareFile(state.file);
+    var infoSuffix = '. La vidéo reste sur cet appareil.';
+
     app.pauseScroll();
     els.preview.src = state.blobUrl;
     els.preview.load();
-    els.btnDownload.href = state.blobUrl;
-    els.btnDownload.download = state.fileName;
+
+    if (nativeShareAvailable) {
+      els.btnDownload.textContent = isIOSLike() ?
+        'Enregistrer dans Photos / Fichiers' :
+        'Enregistrer / partager';
+    } else {
+      els.btnDownload.textContent = 'Télécharger la vidéo';
+    }
+
+    // Un seul bouton principal : sur iPhone il ouvre la feuille de partage
+    // native, ailleurs il télécharge le fichier si le partage est indisponible.
+    els.btnShare.hidden = true;
+
+    if (isIOSLike() && nativeShareAvailable) {
+      infoSuffix += ' Touchez le bouton puis choisissez « Enregistrer la vidéo » ou « Enregistrer dans Fichiers ».';
+    }
+    if (state.blob.size >= LARGE_FILE_WARNING_BYTES) {
+      infoSuffix += ' Fichier volumineux : ne fermez pas cette page avant la fin de l’export.';
+    }
+
     els.info.textContent = core.formatElapsed(durationMs) + ' • ' +
       formatFileSize(state.blob.size) + ' • ' +
       (state.hasAudio ? 'avec son' : 'sans son') +
-      '. La vidéo reste sur cet appareil.';
-    els.btnShare.hidden = !canShareFile(state.file);
+      infoSuffix;
     els.modal.classList.add('visible');
     els.recordTime.textContent = core.formatElapsed(durationMs);
   }
@@ -449,8 +503,6 @@
     els.preview.pause();
     els.preview.removeAttribute('src');
     els.preview.load();
-    els.btnDownload.removeAttribute('href');
-    els.btnDownload.removeAttribute('download');
     els.btnShare.hidden = true;
     els.info.textContent = '';
 
@@ -468,16 +520,40 @@
 
   function shareRecording() {
     if (!canShareFile(state.file)) {
-      return;
+      return Promise.resolve(false);
     }
-    navigator.share({
+    return navigator.share({
       files: [state.file],
       title: 'Vidéo téléprompteur'
+    }).then(function () {
+      return true;
     }).catch(function (err) {
-      if (!err || err.name !== 'AbortError') {
-        app.showOverlay('Le partage n’a pas pu être ouvert', 1800);
+      if (err && err.name === 'AbortError') {
+        return false;
       }
+      app.showOverlay('Le partage n’a pas pu être ouvert', 2000);
+      return false;
     });
+  }
+
+  function downloadRecording() {
+    if (!state.blobUrl || !state.blob) {
+      return;
+    }
+
+    if (isIOSLike() && canShareFile(state.file)) {
+      shareRecording();
+      return;
+    }
+
+    var link = document.createElement('a');
+    link.href = state.blobUrl;
+    link.download = state.fileName;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    app.showOverlay('Téléchargement lancé : gardez cette page ouverte', 2400);
   }
 
   function bindEvents() {
@@ -485,6 +561,7 @@
     els.btnPause.addEventListener('click', toggleRecordingPause);
     els.btnStop.addEventListener('click', finalizeRecording);
     els.btnClose.addEventListener('click', clearRecordingResult);
+    els.btnDownload.addEventListener('click', downloadRecording);
     els.btnShare.addEventListener('click', shareRecording);
 
     document.addEventListener('visibilitychange', function () {
@@ -496,9 +573,12 @@
     window.addEventListener('pagehide', function () {
       cancelClock();
       releaseMicrophone();
-      if (state.blobUrl) {
-        URL.revokeObjectURL(state.blobUrl);
-      }
+
+      // Ne jamais révoquer state.blobUrl ici : sur Safari iOS, l'ouverture
+      // du téléchargement masque la page avant que le gros blob soit lu.
+      // Le révoquer à ce moment provoque « WebKitBlobResource error 1 ».
+      // L'URL est libérée dans clearRecordingResult(), ou par le navigateur
+      // lorsque le document est réellement détruit.
     });
   }
 
