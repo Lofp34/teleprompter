@@ -1,0 +1,334 @@
+/* warmup.css — module d'échauffement vocal du téléprompteur */
+body.warmup-open {
+  overflow: hidden;
+}
+
+#warmupModal[hidden],
+#warmupDictionPanel[hidden],
+#warmupVoicePanel[hidden] {
+  display: none !important;
+}
+
+#warmupModal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.warmup-shell {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 720px);
+  max-height: min(900px, 96dvh);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 86% -10%, rgba(255, 159, 10, 0.22), transparent 36%),
+    linear-gradient(180deg, #202024 0%, #111113 100%);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52);
+}
+
+.warmup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 22px 14px;
+}
+
+.warmup-eyebrow {
+  margin-bottom: 5px;
+  color: #ffb340;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.warmup-header h2 {
+  font-size: clamp(22px, 5vw, 34px);
+  line-height: 1.08;
+}
+
+.warmup-icon-button {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 18px;
+}
+
+.warmup-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 0 22px 16px;
+  padding: 5px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.warmup-tab {
+  min-height: 46px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.warmup-tab[aria-selected='true'] {
+  background: rgba(255, 255, 255, 0.94);
+  color: #111;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.22);
+}
+
+.warmup-panel {
+  min-height: 0;
+  padding: 0 22px 22px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.warmup-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.warmup-counter {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.warmup-secondary {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.warmup-progress-track {
+  height: 5px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.warmup-progress-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff9f0a, #ffd60a);
+  transition: width 0.22s ease;
+}
+
+.warmup-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 280px;
+  max-height: 48dvh;
+  padding: clamp(22px, 5vw, 38px);
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  touch-action: pan-y;
+}
+
+.warmup-step-label {
+  margin-bottom: 16px;
+  color: #ffb340;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+#dictionPhrase {
+  color: #fff;
+  font-size: clamp(25px, 5.8vw, 42px);
+  font-weight: 760;
+  line-height: 1.28;
+  text-wrap: balance;
+}
+
+.warmup-cadence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 24px;
+}
+
+.warmup-cadence span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.warmup-tip {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.warmup-navigation {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.warmup-navigation button {
+  min-height: 52px;
+}
+
+.warmup-navigation .warmup-primary {
+  background: #ff9f0a;
+  color: #15100a;
+}
+
+.voice-card {
+  min-height: 300px;
+}
+
+.voice-card h3 {
+  margin-bottom: 8px;
+  font-size: clamp(25px, 5.7vw, 40px);
+  line-height: 1.1;
+}
+
+#voiceInstruction {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.voice-sequences {
+  display: grid;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.voice-sequence {
+  padding: 15px 14px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: clamp(22px, 5vw, 34px);
+  font-weight: 850;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.warmup-done-row {
+  margin-top: 10px;
+}
+
+#warmupVoicePanel .warmup-done-row {
+  display: flex;
+  justify-content: center;
+}
+
+#btnWarmupDone {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+}
+
+@media (max-width: 640px) {
+  #warmupModal {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .warmup-shell {
+    width: 100%;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .warmup-header {
+    padding: calc(16px + env(safe-area-inset-top)) 16px 12px;
+  }
+
+  .warmup-tabs {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+  .warmup-panel {
+    padding-right: 16px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    padding-left: 16px;
+  }
+
+  .warmup-card {
+    min-height: 46dvh;
+    max-height: 52dvh;
+    border-radius: 20px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .warmup-header {
+    padding-top: calc(9px + env(safe-area-inset-top));
+    padding-bottom: 8px;
+  }
+
+  .warmup-eyebrow {
+    display: none;
+  }
+
+  .warmup-header h2 {
+    font-size: 21px;
+  }
+
+  .warmup-tabs {
+    margin-bottom: 10px;
+  }
+
+  .warmup-card {
+    min-height: 190px;
+    max-height: 48dvh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warmup-progress-track span {
+    transition: none;
+  }
+}
