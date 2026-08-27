@@ -7,6 +7,7 @@
   <title>Prompteur vidéo</title>
   <link rel="stylesheet" href="styles.css?v=20260812-3">
   <link rel="stylesheet" href="layout-fixes.css?v=20260812-3">
+  <link rel="stylesheet" href="warmup.css?v=20260827-1">
 </head>
 <body>
   <div id="screen">
@@ -22,7 +23,7 @@
       <span id="elapsed">00:00</span>
       <div class="topbar-actions">
         <button id="btnToggleControls" type="button" title="Masquer / afficher les contrôles" aria-label="Masquer ou afficher les contrôles">👁</button>
-        <button id="btnFullscreen" type="button" title="Plein écran" aria-label="Activer ou quitter le plein écran">⛶</button>
+        <button id="btnFullscreen" type="button" title="Échauffement diction et voix" aria-label="Ouvrir les exercices de diction et d’amplification de la voix">👅</button>
       </div>
     </div>
 
@@ -98,9 +99,77 @@
     </div>
   </div>
 
+  <div id="warmupModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="warmupTitle" hidden>
+    <div class="warmup-shell">
+      <header class="warmup-header">
+        <div>
+          <p class="warmup-eyebrow">ÉCHAUFFEMENT EXPRESS</p>
+          <h2 id="warmupTitle">Préparez votre voix</h2>
+        </div>
+        <button id="btnCloseWarmup" class="warmup-icon-button" type="button" title="Fermer" aria-label="Fermer les exercices">✕</button>
+      </header>
+
+      <div class="warmup-tabs" role="tablist" aria-label="Type d’échauffement">
+        <button id="warmupTabDiction" class="warmup-tab" type="button" role="tab" aria-selected="true" aria-controls="warmupDictionPanel">👅 Diction</button>
+        <button id="warmupTabVoice" class="warmup-tab" type="button" role="tab" aria-selected="false" aria-controls="warmupVoicePanel" tabindex="-1">🔊 Amplification</button>
+      </div>
+
+      <section id="warmupDictionPanel" class="warmup-panel" role="tabpanel" aria-labelledby="warmupTabDiction">
+        <div class="warmup-meta-row">
+          <span id="dictionCounter" class="warmup-counter">1 / 25</span>
+          <button id="btnRandomDiction" class="warmup-secondary" type="button">↻ Aléatoire</button>
+        </div>
+        <div class="warmup-progress-track" aria-hidden="true"><span id="dictionProgress"></span></div>
+
+        <article id="dictionCard" class="warmup-card" tabindex="0" aria-live="polite">
+          <span class="warmup-step-label">Phrase d’articulation</span>
+          <p id="dictionPhrase"></p>
+          <div class="warmup-cadence" aria-label="Rythme conseillé">
+            <span>① Lentement</span>
+            <span>② Normalement</span>
+            <span>③ Rapidement</span>
+          </div>
+        </article>
+
+        <p class="warmup-tip">Exagérez les consonnes. Sur mobile, balayez la carte vers la gauche ou la droite.</p>
+        <div class="warmup-navigation">
+          <button id="btnPreviousDiction" type="button" aria-label="Phrase précédente">←</button>
+          <button id="btnNextDiction" class="warmup-primary" type="button">Suivante →</button>
+        </div>
+      </section>
+
+      <section id="warmupVoicePanel" class="warmup-panel" role="tabpanel" aria-labelledby="warmupTabVoice" hidden>
+        <div class="warmup-meta-row">
+          <span id="voiceCounter" class="warmup-counter">1 / 3</span>
+          <span class="warmup-counter">Routine ≈ 45 s</span>
+        </div>
+        <div class="warmup-progress-track" aria-hidden="true"><span id="voiceProgress"></span></div>
+
+        <article class="warmup-card voice-card" aria-live="polite">
+          <span class="warmup-step-label">Amplification de la voix</span>
+          <h3 id="voiceStepTitle">Voix posée</h3>
+          <p id="voiceInstruction"></p>
+          <div class="voice-sequences">
+            <p class="voice-sequence">BAM · DAM · GAM · VAM · ZAM</p>
+            <p class="voice-sequence">BÈM · DÈM · GÈM · VÈM · ZÈM</p>
+          </div>
+        </article>
+
+        <div class="warmup-navigation">
+          <button id="btnPreviousVoice" type="button" aria-label="Étape précédente">←</button>
+          <button id="btnNextVoice" class="warmup-primary" type="button">Étape suivante →</button>
+        </div>
+        <div class="warmup-done-row">
+          <button id="btnWarmupDone" type="button">Terminé, je tourne ma vidéo</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
   <script src="prompter-core.js?v=20260812-3"></script>
   <script src="app.js?v=20260812-3"></script>
   <script src="recorder.js?v=20260827-1"></script>
   <script src="camera-recovery.js?v=20260812-3"></script>
+  <script src="warmup.js?v=20260827-1"></script>
 </body>
 </html>
