@@ -8,32 +8,32 @@
   var STORAGE_KEY = 'teleprompter.warmup.v1';
   var SWIPE_THRESHOLD_PX = 46;
 
+  // Reprise fidèle, dans l'ordre, des exercices publiés par ATA Théâtre,
+  // du premier exercice jusqu'à celui de l'Américain. Le doublon exact de
+  // « La cavale au Valaque… » présent sur la page source n'est affiché qu'une fois.
   var DICTION_EXERCISES = [
-    'Chez Chloé, six chats chassent sans bruit sous six chênes.',
-    'Arlette alerte Alain avant l’aube.',
-    'Le dragon doré déroule doucement ses draps.',
-    'Trois gros rats gris grignotent trois grains ronds.',
-    'Six Suissesses sages choisissent chacune six sachets.',
-    'Sur le mur mûr, un rat remue près d’un trou.',
-    'Cinq capucins cachent cinq capes couleur cuivre.',
-    'Ces serpents sifflants glissent sous sept sapins.',
-    'Six slips souples sèchent sur six fils solides.',
-    'Paul peint un pin pendant que Pierre boit.',
-    'Dans le bois, Paul peint puis pose son pinceau.',
-    'Huit fruits cuits refroidissent dans huit petits plats.',
-    'La jument du lac lape l’eau claire.',
-    'L’eau claire du lac lave les longues jambes de la jument.',
-    'Le pragmatique astigmate agace Agathe.',
-    'J’exige dix chemises fines et dix fichus framboise.',
-    'Le fisc fixe six taxes strictes sur six luxes exquis.',
-    'Petite prune, quand te dépetitepruneras-tu ?',
-    'Un ange songe à changer de visage sans jamais se décourager.',
-    'Grand doreur, redore trente-trois cuillères trop argentées.',
-    'Quand le cordier corde sa corde, trois cordons se décordent.',
-    'Rat voit rôti, rôti tente rat, rat retire vite sa patte.',
-    'Un point dans mon pourpoint me pique et me pointe.',
-    'Trois très stricts statisticiens trient trente statistiques.',
-    'Si l’Américain se désaméricaniserait, comment le réaméricaniserions-nous, l’Américain ?'
+    "Sage chasseur âgé aux yeux chassieux, sachez chasser sans chien chose aisée, ce chat chauve caché sous ces six chiches souches de sauge sèche.",
+    "Alerte, Arlette allaite !",
+    "Un gradé dragon dégrade un dragon gradé",
+    "Trois très gros, gras, grands rats gris grattent",
+    "Trois sorcières suédoises et transsexuelles regardent les boutons de trois montres Swatch suisses. Quelle sorcière suédoise transsexuelle regarde quel bouton de quelle montre Swatch suisse ?",
+    "Mur gâté, trou s'y fit, rat s'y mit",
+    "Cinq capucins portaient sur leur sein le sein du saint-père",
+    "Pour qui sont ces serpents qui sifflent sur vos têtes ?",
+    "Six slips chics, six chics slips",
+    "Papa boit dans les pins. Papa peint dans les bois. Dans les bois, papa boit et peint",
+    "Donne-lui à minuit huit fruits cuits et si ces huit fruits cuits lui nuisent, donne lui huit fruits crus",
+    "La cavale au Valaque avala l'eau du lac. L'eau du lac lava la cavale au Valaque",
+    "Le pragmatisme de l'astigmate agace",
+    "Je veux et j'exige dix-huit chemises fines et six fichus fins !",
+    "Le fisc fixe exprès chaque taxe fixe excessive exclusivement au luxe et à l'exquis",
+    "Dis-moi, petite pomme, quand te dépetitepommeras-tu ?Je me dépetitepommerai quand toutes les petites pommes se dépetitepommeront. Or, comme toutes les petites pommes ne se dépetitepommeront jamais, petite pomme ne se dépetitepommera, jamais",
+    "Un ange qui songeait à changer son visage pour donner le change, se vit si changé, que loin de louanger ce changement, il jugea que tous les autres anges jugeraient que jamais ange ainsi changé ne rechangerait jamais, et jamais plus ange ne songea à se changer",
+    "Très grand doreur, quand redoreras-tu sûrement et d'un goût rare mes trente trois ou trente quatre cuillères d'or trop argentées ? Je redorerai sûrement quatre grandes cuillères d'or trop argentées, quand j'aurai redoré sûrement et d'un goût rare tes trente trois ou trente quatre autres grandes cuillères d'or trop argentées",
+    "Quand un cordier cordant veut corder une corde, pour sa corde corder,trois cordon il accorde. Mais si l'un des cordons de la corde décorde, le cordon décordant fait décorder la corde",
+    "Rat vit rôt, rôt tenta rat, rat mit patte à rôt, rot brûla pattes à rat, rat secoua pattes et quitta rôt",
+    "J'ai un point dans mon pourpoint qui me pique et qui me pointe, si je savais celui qui a mis ce point dans mon pourpoint qui me pique et qui nie pointe, je lui mettrais un point dans son pourpoint qui le pique et qui le pointe",
+    "Si l 'Américain se désaméricaniserait comment le réaméricaniserions-nous, l'Américain ? On le réaméricaniserait comme on l'a désaméricanisé, l'Américain"
   ];
 
   var VOICE_STEPS = [
